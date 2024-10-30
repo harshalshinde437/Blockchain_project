@@ -1,0 +1,6 @@
+
+{
+  "address": "{{.peername}}-fabric-cc.chaincode.svc:9999",
+  "dial_timeout": "10s",
+  "tls_required": false
+}

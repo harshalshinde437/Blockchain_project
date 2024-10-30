@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fabric-explore
+description: A Helm chart for deploying hlf explorer
+type: application
+version: 1.0.0
+appVersion: "1.5.0"

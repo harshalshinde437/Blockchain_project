@@ -1,0 +1,197 @@
+{{/*
+Copyright National Payments Corporation of India. All Rights Reserved.
+SPDX-License-Identifier:  GPL-3.0
+*/}}
+
+{{ $BankName               := .Values.nameOverride }}
+{{ $CorePeerMspConfigPath  := printf "%s%s" .Values.workdir "/peer/crypto/users/admin/msp" }}
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fabric-explore.fullname" . }}
+  labels:
+    {{- include "fabric-explore.labels" . | nindent 4 }}  
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fabric-explore.selectorLabels" . | nindent 6 }}
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "fabric-explore.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "fabric-explore.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: init
+          image: {{ $.Values.init.image.repository }}:{{ $.Values.init.image.tag }}
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy  | default "Always" }}
+          env:
+            - name: GOPATH
+              value: /opt/gopath
+            - name: ORDERER_CA
+              value: {{ $.Values.workdir }}/peer/orderer-crypto/orderer/tlsca/ca-cert.pem
+            - name: ORDERER_BASE_PATH
+              value: {{ $.Values.workdir }}/peer/orderer-crypto/orderer/tlsca
+          command: ["/bin/sh","-c"]
+          args:
+           {{/*- /scripts/enroll.sh {{ $IcaEndpoint }} {{ $TlsCaEndpoint }} {{ .identity_name }} {{ .identity_secret }} {{ $.Values.ica_tls_cert_file }} {{ $.Values.tlsca_tls_cert_file }} */}}
+            - if [ -e /opt/gopath/src/github.com/hyperledger/fabric/peer/orderer-crypto/orderer/tlsca/ca-cert.pem ]; then echo "Crypto artifacts already exists,hence skipping.If you want to regenerate then delete folders and restart the pod"; else /scripts/enroll.sh; fi ;
+          volumeMounts:
+            - name: certs
+              mountPath: {{ $.Values.workdir }}
+            - name: fabric-config
+              subPath: config.yaml
+              mountPath: /tmp/config.yaml
+            - name: fabric-config
+              subPath: enroll.sh
+              mountPath: /scripts/enroll.sh
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "America/Sao_Paulo"
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.postgresDatabase }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.pg_creds }}
+                  key: user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.pg_creds }}
+                  key: password
+            - name: PGDATA
+              value: {{ .Values.postgresql.pgData }}  
+          volumeMounts:
+            - mountPath: "/var/lib/postgresql/data"
+              name: explorerdb
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
+            initialDelaySeconds: 60 
+            failureThreshold: 6
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - -e
+              - |
+                exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
+            failureThreshold: 6
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.explorer.containerPort }}
+              protocol: TCP
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: EXTRA_HOST
+              value: grafana
+            - name: EXTRA_HOST1
+              value: prometheus
+            - name: DATABASE_HOST
+              value: "{{ .Values.explorer.databaseHost }}"
+            - name: DATABASE_NAME
+              value: "{{ .Values.postgresql.postgresDatabase }}"
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.pg_creds }}
+                  key: user
+            - name: DATABASE_PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.pg_creds }}
+                  key: password   
+            - name: LOG_LEVEL_APP
+              value: "{{ .Values.explorer.logLevelApp }}"
+            - name: LOG_LEVEL_DB
+              value: "{{ .Values.explorer.logLevelDB }}"
+            - name: LOG_LEVEL_CONSOLE
+              value: "{{ .Values.explorer.logLevelConsole }}"
+            - name: LOG_CONSOLE_STDOUT
+              value: "{{ .Values.explorer.logConsoleStdout }}"
+            - name: DISCOVERY_AS_LOCALHOST
+              value: "{{ .Values.explorer.discoveryAsLocalhost }}"
+            - name: PORT
+              value: "{{ .Values.explorer.containerPort | default "8080"}}"
+          volumeMounts:
+            - name: certs
+              mountPath: {{ $.Values.workdir }}
+            - mountPath: /opt/explorer/app/platform/fabric/config.json
+              name: fabric-config
+              subPath: config.json
+            - mountPath: "/opt/explorer/app/platform/fabric/connection-profile/wtx-network.json"
+              name: fabric-config
+              subPath: wtx-network.json
+            - mountPath: "/opt/wallet"
+              name: explorer-wallet
+      volumes:
+        - name: fabric-config
+          configMap:
+            name: {{ include "fabric-explore.fullname" $ }}-scripts
+            defaultMode: 0777
+        - name: explorerdb 
+          persistentVolumeClaim:
+            claimName: {{ .name }}{{ include "fabric-explore.fullname" $ }}-db
+        - name: explorer-wallet
+          persistentVolumeClaim:
+            claimName: {{ .name }}{{ include "fabric-explore.fullname" $ }}-wallet  
+        - name: certs
+          persistentVolumeClaim:
+            claimName: {{ .name }}{{ include "fabric-explore.fullname" $ }}-certs
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

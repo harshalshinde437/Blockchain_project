@@ -1,0 +1,58 @@
+version: "3.6"
+
+networks:
+    docker_test:
+        external: true
+
+services:
+    adminorg.adminorg.svc.fabric-cc:
+        build: .
+        container_name: adminorg.adminorg.svc.fabric-cc
+        hostname: adminorg.adminorg.svc.fabric-cc
+        volumes:
+            - ./crypto:/crypto
+        env_file:
+            - chaincode1.env
+        networks:
+            docker_test:
+        expose:
+            - 9999
+
+    farmer.farmer.svc.fabric-cc:
+        build: .
+        container_name: farmer.farmer.svc.fabric-cc
+        hostname: farmer.farmer.svc.fabric-cc
+        volumes:
+            - ./crypto:/crypto
+        env_file:
+            - chaincode2.env
+        networks:
+            docker_test:
+        expose:
+            - 9999
+
+    buyer.buyer.svc.fabric-cc:
+        build: .
+        container_name: buyer.buyer.svc.fabric-cc
+        hostname: buyer.buyer.svc.fabric-cc
+        volumes:
+            - ./crypto:/crypto
+        env_file:
+            - chaincode3.env
+        networks:
+            docker_test:
+        expose:
+            - 9999
+
+    shipper.shipper.svc.fabric-cc:
+        build: .
+        container_name: shipper.shipper.svc.fabric-cc
+        hostname: shipper.shipper.svc.fabric-cc
+        volumes:
+            - ./crypto:/crypto
+        env_file:
+            - chaincode4.env
+        networks:
+            docker_test:
+        expose:
+            - 9999

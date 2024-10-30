@@ -1,0 +1,89 @@
+# Default values for ca-user.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+job_type: chaincode_ops
+nameOverride: "provider"
+fullnameOverride: ""
+project: cvs
+
+imagePullSecrets: []
+image:
+  repository: 836713645333.dkr.ecr.us-east-2.amazonaws.com/hlf-builder
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "2.5"
+
+ca:
+ ica_endpoint: ica-provider.cvs-dev.net
+ tlss_ca_endpoint: tls-ca.orderer.svc:7051
+ k8s_ca_endpoint: ica-provider.provider.svc:7051
+
+hlf_domain: cvs-dev.net
+k8s_hlf_domain: provider.svc
+hlf_channel: "cvschannel"
+fabric_actions: 
+ approve_chaincode: true
+
+csr_names_cn: IN
+csr_names_st: Telangana
+csr_names_l: Hyderabad
+csr_names_o: vivvenns co
+
+orderer_endpoint: orderer0-orderer.orderer.svc:30000
+filestore_endpoint: http://filestore.filestore.svc
+filestore_ssl: false # Make it `true` if `filestore_endpoint` is over https.
+require_collection_config: "true"
+collection_config_file: "collection-config.json"
+collection_config_file_hash: "2be61467905262472d8cbbf2facead3a84e883b4f875b65e26539898d22766ba"
+
+cc_name: p2p-cc
+cc_version: "1.0"
+cc_package_id: "p2p-cc:c9fa0502e64ae4d020e5a99aaea405c2f4a3379567f16d7f28c591e120ac26a9"
+seq: "3"
+
+identities:
+  - identity_name: admin
+    identity_secret: adminSamplePassword
+    identity_type: admin
+  - identity_name: peer0-provider
+    identity_secret: peer0providerSamplePassword
+    identity_type: peer
+
+# .Values.core_peer_mspconfigpath_override - Use only if your admin username is not "admin". 
+# Not required for identity registration, but we use the same values file for deploying fabric-tools helm chart. 
+# This must be under /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/users/
+# Eg; /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/users/<admin-user>/msp
+# core_peer_mspconfigpath_override: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/users/admin-provider/msp
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+  # fsGroup: 2000
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

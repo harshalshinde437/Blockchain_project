@@ -1,0 +1,74 @@
+[
+  {
+    "name": "adminorgDataCollection",
+    "policy": "OR('adminorg.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('adminorg.member')"
+    }
+  },
+  {
+    "name": "provideradminorgCollection",
+    "policy": "OR('adminorg.member', 'provider.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('adminorg.member', 'provider.member')"
+    }
+  },
+  {
+    "name": "providerDataCollection",
+    "policy": "OR('provider.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('provider.member')"
+    }
+  },
+  {
+    "name": "receiverDataCollection",
+    "policy": "OR('receiver.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('receiver.member')"
+    }
+  },
+  {
+    "name": "receiverproviderRequestsCollection",
+    "policy": "OR('provider.member', 'receiver.member', 'adminorg.member')",
+    "requiredPeerCount": 1,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('provider.member', 'receiver.member')"
+    }
+  },
+  {
+    "name": "systemDataCollection",
+    "policy": "OR('receiver.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('receiver.member')"
+    }
+  }
+]

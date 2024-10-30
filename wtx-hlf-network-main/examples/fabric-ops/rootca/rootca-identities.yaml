@@ -1,0 +1,76 @@
+# Default values for ca-ops.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+job_type: identity
+nameOverride: "rootca"
+fullnameOverride: ""
+
+
+imagePullSecrets: []
+image:
+  repository: npcioss/hlf-builder
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "2.4"
+
+csr_names_cn: IN
+csr_names_st: Gujrat
+csr_names_l: Ahmdabad
+csr_names_o: worldtradeX
+
+ca:
+  ca_endpoint: root-ca.localho.st
+  admin_secret: rca-secret
+  k8s_ca_endpoint: root-ca.orderer.svc:7051
+
+identities:
+  - identity_name: ica-orderer
+    identity_secret: icaordererSamplePassword
+    identity_type: ica
+  - identity_name: ica-adminorg
+    identity_secret: icaadminorgSamplePassword
+    identity_type: ica
+  - identity_name: ica-farmer
+    identity_secret: icafarmerSamplePassword
+    identity_type: ica
+  - identity_name: ica-buyer
+    identity_secret: icabuyerSamplePassword
+    identity_type: ica
+  - identity_name: ica-shipper
+    identity_secret: icashipperSamplePassword
+    identity_type: ica
+  # - identity_name: ica-provider
+  #   identity_secret: icaproviderSamplePassword
+  #   identity_type: ica
+  # - identity_name: ica-receiver
+  #   identity_secret: icareceiverSamplePassword
+  #   identity_type: ica
+
+ttlSecondsAfterFinished: "10000"
+retry_seconds: 60
+tls_cert_file: /root/cert.pem
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+  # fsGroup: 2000
+securityContext: {}
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}

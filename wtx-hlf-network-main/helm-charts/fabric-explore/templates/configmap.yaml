@@ -1,0 +1,155 @@
+{{/*
+Copyright National Payments Corporation of India. All Rights Reserved.
+SPDX-License-Identifier:  GPL-3.0
+*/}}
+
+
+{{- $HlfDomain      := .Values.hlf_domain }}
+{{- $Msp_base_dir   := printf "%s%s" .Values.workdir "/peer/crypto/users" }}
+{{- $k8s_HlfDomain  := .Values.k8s_hlf_domain }}
+{{- $orgmsp         := .Values.networkjson.orgmsp }}
+{{- $PeerOrgName    := .Values.networkjson.peer_org_name }}
+
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fabric-explore.fullname" . }}-scripts
+  labels:
+    {{- include "fabric-explore.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    NodeOUs:
+      Enable: true
+      ClientOUIdentifier:
+        Certificate: intermediatecerts/ca-cert.pem
+        OrganizationalUnitIdentifier: client
+      PeerOUIdentifier:
+        Certificate: intermediatecerts/ca-cert.pem
+        OrganizationalUnitIdentifier: peer
+      AdminOUIdentifier:
+        Certificate: intermediatecerts/ca-cert.pem
+        OrganizationalUnitIdentifier: admin
+      OrdererOUIdentifier:
+        Certificate: intermediatecerts/ca-cert.pem
+        OrganizationalUnitIdentifier: orderer
+  enroll.sh: |
+    enroll() {
+      ica_url=$1
+      tlsca_url=$2
+      identity_name=$3
+      identity_secret=$4
+      identity_type=$5
+      msp_base_dir=$6
+      org_name=$7
+
+      echo "Fetching public key cert of https://$ica_url"
+      curl https://$ica_url/cainfo --insecure | jq .result.CAChain | base64 -i -d > /tmp/ca-cert.pem
+      echo "Enrolling as user $identity_name to https://$ica_url"
+      fabric-ca-client enroll -d \
+          --url https://$identity_name:$identity_secret@$ica_url \
+          --mspdir $msp_base_dir/$org_name/$identity_name/msp \
+          --tls.certfiles /tmp/ca-cert.pem \
+          --csr.hosts $identity_name,$identity_name.{{ $HlfDomain }},$identity_name.{{ $k8s_HlfDomain }} \
+          --csr.names O='{{ .Values.csr_names_o }}',L={{ .Values.csr_names_l }},ST={{ .Values.csr_names_st }},C={{ .Values.csr_names_cn }}
+      echo "Re-arranging the MSP cert directory";
+      cp $msp_base_dir/$org_name/$identity_name/msp/intermediatecerts/* $msp_base_dir/$org_name/$identity_name/msp/intermediatecerts/ca-cert.pem;
+      cp $msp_base_dir/$org_name/$identity_name/msp/keystore/* $msp_base_dir/$org_name/$identity_name/msp/keystore/priv_sk;
+      cp /tmp/config.yaml $msp_base_dir/$identity_name/msp/config.yaml;
+      sleep 5;
+
+      if [ $identity_type = "admin" ]
+      then 
+          echo "No TLS enrollment is required for admin user type, Skipping"
+      else
+          echo "Fetching public key cert of https://$tlsca_url"
+          curl https://$tlsca_url/cainfo --insecure | jq .result.CAChain | base64 -i -d > /tmp/tlsca-cert.pem
+          echo "Enrolling as user $identity_name to https://$tlsca_url"
+          fabric-ca-client enroll -d \
+              --url https://$identity_name:$identity_secret@$tlsca_url \
+              --mspdir $msp_base_dir/$org_name/$identity_name/tls \
+              --tls.certfiles /tmp/tlsca-cert.pem \
+              --csr.hosts $identity_name,$identity_name.{{ $HlfDomain }},$identity_name.{{ $k8s_HlfDomain }} \
+              --enrollment.profile tls \
+              --csr.names O='{{ .Values.csr_names_o }}',L={{ .Values.csr_names_l }},ST={{ .Values.csr_names_st }},C={{ .Values.csr_names_cn }}
+          echo "Re-arranging the TLS cert directory";
+          cp $msp_base_dir/$org_name/$identity_name/tls/tlscacerts/* $msp_base_dir/$org_name/$identity_name/tls/ca.crt;
+          cp $msp_base_dir/$org_name/$identity_name/tls/signcerts/* $msp_base_dir/$org_name/$identity_name/tls/server.crt;
+          cp $msp_base_dir/$org_name/$identity_name/tls/keystore/* $msp_base_dir/$org_name/$identity_name/tls/server.key;
+          sleep 5;
+      fi
+    }
+
+    {{- range .Values.organizations }}
+      {{ $org := . }}
+      #enroll {{ $org.ica_url }} {{ $org.tlsca_url }} {{ $org.name }} {{ $org.admin_secret }} admin {{ $org.msp_base_dir | default $Msp_base_dir }}
+      {{- range $org.identities }}
+        enroll {{ $org.ica_url }} {{ $org.tlsca_url }} {{ .identity_name }} {{ .identity_secret }} {{ .identity_type }} {{ $.msp_base_dir | default $Msp_base_dir }}/{{ $org.name }}
+      {{- end }}
+    {{- end }}  
+    echo "Creating directory structure for Orderer"
+    mkdir -p $ORDERER_BASE_PATH
+    echo "Copying Orderer tls cert"
+    cp /tmp/tlsca-cert.pem $ORDERER_BASE_PATH/ca-cert.pem
+  config.json: |
+    {
+        "network-configs": {
+            "wtx-network": {
+                "name": "WTX Network",
+                "profile": "/opt/explorer/app/platform/fabric/connection-profile/wtx-network.json",
+                "enableAuthentication": false,
+                "bootMode": "ALL",
+                "noOfBlocks": 0                
+            }
+        },
+        "license": "Apache-2.0"
+    }
+  wtx-network.json: |
+    {
+    	"name": "wtx-network",
+    	"version": "1.0.0",
+    	"client": {
+    		"tlsEnable": true,
+    		"adminCredential": {
+    			"id": "wtxexploreradmin",
+    			"password": "wtxexploreradminpw"
+    		},
+    		"enableAuthentication": false,
+    		"organization": "{{ $orgmsp }}",
+    		"connection": {
+    			"timeout": {
+    				"peer": {
+    					"endorser": "300"
+    				},
+    				"orderer": "300"
+    			}
+    		}
+    	},
+    	"channels": {
+    		"wtxchannel": {
+    			"peers": {
+    				"{{ $PeerOrgName }}.{{ $k8s_HlfDomain  }}": {}
+    			}
+    		}
+    	},
+    	"organizations": {
+    		"{{ $orgmsp }}": {
+    			"mspid": "{{ $orgmsp }}",
+    			"adminPrivateKey": {
+    				"path": "{{ $Msp_base_dir }}/{{ $orgmsp }}/admin/msp/keystore/priv_sk"
+    			},
+    			"peers": ["{{ $PeerOrgName }}.{{ $k8s_HlfDomain  }}"],
+    			"signedCert": {
+    				"path": "{{ $Msp_base_dir }}/{{ $orgmsp }}/admin/msp/signcerts/cert.pem"
+    			}
+    		}
+    	},
+    	"peers": {
+    		"{{ $PeerOrgName }}.{{ $k8s_HlfDomain  }}": {
+    			"tlsCACerts": {
+    				"path": "{{ $Msp_base_dir }}/{{ $orgmsp }}/{{ $PeerOrgName }}/tls/ca.crt"
+    			},
+    			"url": "grpcs://{{ $PeerOrgName }}.{{ $k8s_HlfDomain  }}:30000"
+    		}
+    	}
+    }

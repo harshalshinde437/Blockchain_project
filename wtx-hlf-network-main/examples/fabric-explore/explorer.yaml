@@ -1,0 +1,154 @@
+# ==================================================================
+#job_type: identity
+nameOverride: ""
+fullnameOverride: ""
+project: wtx
+
+imagePullSecrets: []
+
+replicaCount: 1
+
+init:
+  image:
+   repository: npcioss/hlf-builder
+   tag: 2.4
+
+image:
+  repository: ghcr.io/hyperledger-labs/explorer
+  tag: latest
+  pullPolicy: Always
+
+csr_names_cn: IN
+csr_names_st: Gujrat
+csr_names_l: Ahmdabad
+csr_names_o: worldtradeX
+
+
+hlf_domain: localho.st
+k8s_hlf_domain: adminorg.svc
+networkjson:
+  orgmsp: adminorg
+  peer_org_name: peer0-adminorg
+
+organizations:
+  - name: adminorg
+    admin_secret: adminorg-secret
+    ica_url: ica-adminorg.adminorg.svc:7051
+    tlsca_url: tls-ca.orderer.svc:7051
+    identities:
+      - identity_name: admin
+        identity_secret: adminSamplePassword
+        identity_type: admin
+      - identity_name: peer0-adminorg
+        identity_secret: peer0adminorgSamplePassword
+        identity_type: peer
+      - identity_name: peer1-adminorg
+        identity_secret: peer1adminorgSamplePassword
+        identity_type: peer
+      # - identity_name: peer2-adminorg
+      #   identity_secret: peer2adminorgSamplePassword
+      #   identity_type: peer
+
+  - name: farmer
+    admin_secret: farmer-secret
+    ica_url: ica-farmer.farmer.svc:7051
+    tlsca_url: tls-ca.orderer.svc:7051  
+    identities:
+      - identity_name: admin
+        identity_secret: adminSamplePassword
+        identity_type: admin
+      - identity_name: peer0-farmer
+        identity_secret: peer0farmerSamplePassword
+        identity_type: peer
+      - identity_name: peer1-farmer
+        identity_secret: peer1farmerSamplePassword
+        identity_type: peer
+
+  # - name: buyer
+  #   admin_secret: buyer-secret
+  #   ica_url: ica-buyer.buyer.svc:7051
+  #   tlsca_url: tls-ca.orderer.svc:7051  
+  #   identities:
+  #     - identity_name: admin
+  #       identity_secret: adminSamplePassword
+  #       identity_type: admin
+  #     - identity_name: peer0-buyer
+  #       identity_secret: peer0buyerSamplePassword
+  #       identity_type: peer
+  #     - identity_name: peer1-buyer
+  #       identity_secret: peer1buyerSamplePassword
+  #       identity_type: peer
+
+  # - name: shipper
+  #   admin_secret: shipper-secret
+  #   ica_url: ica-shipper.shipper.svc:7051
+  #   tlsca_url: tls-ca.orderer.svc:7051  
+  #   identities:
+  #     - identity_name: admin
+  #       identity_secret: adminSamplePassword
+  #       identity_type: admin
+  #     - identity_name: peer0-shipper
+  #       identity_secret: peer0shipperSamplePassword
+  #       identity_type: peer
+  #     - identity_name: peer1-shipper
+  #       identity_secret: peer1shipperSamplePassword
+  #       identity_type: peer
+
+postgresql:
+  image:
+    repository: ghcr.io/hyperledger-labs/explorer-db
+    tag: latest
+  postgresDatabase: fabricexplorer
+  pgData: /var/lib/postgresql/data/explordata
+  pg_creds: pgs-secret
+
+explorer:
+  databaseHost: localhost
+  # databaseName: fabricexplorer
+  # databaseUsername: hppoc
+  # databasePassword: password
+  logLevelApp: debug
+  logLevelDB: debug
+  logLevelConsole: info
+  logConsoleStdout: "true"
+  discoveryAsLocalhost: "false"
+  containerPort: 8080
+
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+          
+resources: {}
+  # limits:
+  #   cpu: "100m"
+  #   memory: 256Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+
+nodeSelector: {}
+tolerations: []
+affinity: {}  
+podAnnotations: {}
+  
+
+
+
+
+

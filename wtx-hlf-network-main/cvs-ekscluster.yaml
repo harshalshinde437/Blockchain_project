@@ -1,0 +1,116 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: dev-cluster
+  region: us-east-2
+  version: "1.28"
+
+vpc:
+  
+  id: "vpc-0a627eae16fb91310"
+  #cidr: 10.10.0.0/16
+  #autoAllocateIPv6: true
+  #hostnameType: resource-name
+  # disable public access to endpoint and only allow private access
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+  nat:
+    gateway: Single # other options: Disable, Single (default)
+  subnets:
+    public:
+      public-one:
+        id: subnet-06b645fe61eabd37c
+        # az: us-west-2a # any unambiguous combination of these is allowed
+        # cidr: 192.168.64.0/19
+      public-two:
+        id: subnet-0d0e157362895eb72
+    private:
+      private-one:
+        id: subnet-02c6c590bb38ecb27
+      private-two:
+        id: subnet-0512872aefac4deda
+   
+
+managedNodeGroups:        
+  - name: hlfnet
+    instanceType: m5.large
+    minSize: 1
+    maxSize: 3
+    desiredCapacity: 2
+    availabilityZones: ["us-east-2a", "us-east-2b"]
+    ssh: # import public key from file
+      publicKeyPath: ~/.ssh/id_rsa.pub
+    labels:
+      node-class: "hlf-nodes"
+    iam:
+      withAddonPolicies:
+        ebs: true
+        efs: true
+        autoScaler: true
+    privateNetworking: true
+    propagateASGTags: true
+    tags:
+      env: staging
+  - name: root-ca
+    instanceType: t3.medium
+    minSize: 1
+    maxSize: 3
+    desiredCapacity: 1
+    availabilityZones: ["us-east-2a"]
+    ssh: # import public key from file
+      publicKeyPath: ~/.ssh/id_rsa.pub
+    labels:
+      node-class: "rootcas"         
+    iam:
+      withAddonPolicies:
+        ebs: true
+        efs: true
+        autoScaler: true
+    privateNetworking: true # if only 'Private' subnets are given, this must be enabled
+    propagateASGTags: true
+    tags:
+      env: staging
+cloudWatch:
+    clusterLogging:
+        # enable specific types of cluster control plane logs
+        enableTypes: ["audit", "authenticator", "controllerManager"]
+        # all supported types: "api", "audit", "authenticator", "controllerManager", "scheduler"
+        # supported special values: "*" and "all"
+
+        # Sets the number of days to retain the logs for (see [CloudWatch docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html#API_PutRetentionPolicy_RequestSyntax)).
+        # By default, log data is stored in CloudWatch Logs indefinitely.
+        logRetentionInDays: 60
+iam:
+  withOIDC: true
+  serviceAccounts:
+  - metadata:
+      name: ebs-csi-controller-sa
+      namespace: kube-system
+    wellKnownPolicies:
+      ebsCSIController: true
+  - metadata:
+      name: efs-csi-controller-sa
+      namespace: kube-system
+    wellKnownPolicies:
+      efsCSIController: true
+  - metadata:
+      name: external-dns
+      namespace: kube-system
+    wellKnownPolicies:
+      externalDNS: true
+addons:
+- name: vpc-cni # no version is specified so it deploys the default version
+  version: latest
+  attachPolicyARNs:
+    - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+- name: coredns
+  version: latest # auto discovers the latest available
+- name: kube-proxy
+  version: latest
+- name: aws-ebs-csi-driver
+  version: latest
+  attachPolicyARNs:
+    - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+

@@ -1,0 +1,56 @@
+[
+	{
+		"name": "collectionDocuments",
+		"policy": "OR('provider.member','provider.admin', 'provider.peer', 'receiver.admin','receiver.member','receiver.peer', 'adminorg.peer', 'adminorg.member', 'adminorg.admin')",
+		"requiredPeerCount": 0,
+		"maxPeerCount": 3,
+		"blockToLive": 10000000000,
+		"endorsementPolicy": {
+			"signaturePolicy": "OR('provider.member', 'receiver.member', 'adminorg.member')"
+		}
+	},
+	{
+		"name": "collectionDocumentProviderPrivate",
+		"policy": "OR('provider.member')",
+		"requiredPeerCount": 0,
+		"maxPeerCount": 3,
+		"blockToLive": 1000,
+		"memberOnlyRead": true,
+		"endorsementPolicy": {
+		    "signaturePolicy": "OR('provider.member' )"
+		}
+	},
+	{
+		"name": "collectionDocumentProviderPrivateGDPR",
+		"policy": "OR('provider.member')",
+		"requiredPeerCount": 0,
+		"maxPeerCount": 3,
+		"blockToLive": 3,
+		"memberOnlyRead": true,
+		"endorsementPolicy": {
+		    "signaturePolicy": "OR('provider.member' )"
+		}
+	},
+	{
+		"name": "collectionDocumentReceiverPrivate",
+		"policy": "OR('receiver.member')",
+		"requiredPeerCount": 0,
+		"maxPeerCount": 3,
+		"blockToLive": 1000,
+		"memberOnlyRead": true,
+		"endorsementPolicy": {
+			"signaturePolicy": "OR('receiver.member' )"
+		}
+	},
+	{
+		"name": "collectionDocumentReceiverPrivateGDPR",
+		"policy": "OR('receiver.member')",
+		"requiredPeerCount": 0,
+		"maxPeerCount": 3,
+		"blockToLive": 3,
+		"memberOnlyRead": true,
+		"endorsementPolicy": {
+			"signaturePolicy": "OR('receiver.member' )"
+		} 
+	}	
+]
